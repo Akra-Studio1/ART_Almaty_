@@ -1,62 +1,77 @@
 
 document.addEventListener("DOMContentLoaded", () => {
+  "use strict";
+
   // ==========================================
   // SETTINGS
   // ==========================================
 
-  const WHATSAPP_NUMBER = ""; 
-  // Добавим подтверждённый номер компании позже.
-  // Формат: код страны и цифры, без +, пробелов и скобок.
+  const CONFIG = {
+    whatsappNumber: "",
+    introDuration: 5500
+  };
 
-  const INTRO_DURATION = 5500;
+  // Номер компании добавим после согласования.
+  // Формат: 77000000000, без плюса и пробелов.
 
   // ==========================================
-  // CINEMATIC INTRO
+  // INTRO — ARCHITECTURE
   // ==========================================
 
-  const intro = document.querySelector(".intro");
-  const skipButton = document.querySelector(".intro-skip");
+  const intro = document.getElementById("intro");
+  const skipIntro = document.getElementById("skipIntro");
+
+  let introTimer = null;
+  let introClosed = false;
 
   function closeIntro() {
-    if (!intro || intro.classList.contains("hidden")) return;
+    if (!intro || introClosed) return;
+
+    introClosed = true;
+
+    if (introTimer) {
+      clearTimeout(introTimer);
+    }
 
     intro.classList.add("hidden");
-
-    setTimeout(() => {
-      intro.remove();
-    }, 1100);
 
     try {
       sessionStorage.setItem("artAlmatyIntroShown", "true");
     } catch (error) {
-      // Сайт продолжит работать, даже если хранилище недоступно.
+      // Сайт продолжает работать без sessionStorage.
     }
-  }
 
-  let introAlreadyShown = false;
-
-  try {
-    introAlreadyShown =
-      sessionStorage.getItem("artAlmatyIntroShown") === "true";
-  } catch (error) {
-    introAlreadyShown = false;
+    window.setTimeout(() => {
+      intro.remove();
+    }, 1100);
   }
 
   const reducedMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)"
   ).matches;
 
-  if (intro && (introAlreadyShown || reducedMotion)) {
-    intro.remove();
-  } else if (intro) {
-    const introTimer = setTimeout(closeIntro, INTRO_DURATION);
+  let introWasShown = false;
 
-    if (skipButton) {
-      skipButton.addEventListener("click", () => {
-        clearTimeout(introTimer);
-        closeIntro();
-      });
+  try {
+    introWasShown =
+      sessionStorage.getItem("artAlmatyIntroShown") === "true";
+  } catch (error) {
+    introWasShown = false;
+  }
+
+  if (intro) {
+    if (introWasShown || reducedMotion) {
+      intro.remove();
+    } else {
+      introTimer = window.setTimeout(
+        closeIntro,
+        CONFIG.introDuration
+      );
     }
+  }
+
+  if (skipIntro) {
+    skipIntro.addEventListener("click", closeIntro);
   }
 
   // ==========================================
@@ -77,7 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
       },
       {
         threshold: 0.12,
-        rootMargin: "0px 0px -40px 0px"
+        rootMargin: "0px 0px -35px 0px"
       }
     );
 
@@ -91,127 +106,169 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ==========================================
-  // BEFORE / AFTER SLIDER
+  // COMPARISON SLIDER
   // ==========================================
 
-  const comparison = document.querySelector(".comparison-stage");
-  const afterImage = document.querySelector(".comparison-after");
-  const divider = document.querySelector(".comparison-divider");
-  const handle = document.querySelector(".comparison-handle");
+  const comparisonBox = document.getElementById("comparisonBox");
+  const afterWrap = document.getElementById("afterWrap");
+  const comparisonLine = document.getElementById("comparisonLine");
+  const comparisonRange = document.getElementById("comparisonRange");
+  const afterImage = comparisonBox?.querySelector(".comparison-after");
 
-  if (comparison && afterImage && divider && handle) {
-    let dragging = false;
+  if (
+    comparisonBox &&
+    afterWrap &&
+    comparisonLine &&
+    comparisonRange &&
+    afterImage
+  ) {
+    function syncImageSize() {
+      const width = comparisonBox.clientWidth;
 
-    function updateComparison(clientX) {
-      const rect = comparison.getBoundingClientRect();
-
-      let position = ((clientX - rect.left) / rect.width) * 100;
-
-      position = Math.max(0, Math.min(100, position));
-
-      afterImage.style.clipPath = `inset(0 ${100 - position}% 0 0)`;
-      divider.style.left = `${position}%`;
-      handle.style.left = `${position}%`;
+      // Изображение сохраняет ширину всей сцены,
+      // а обрезается только внешним контейнером.
+      afterImage.style.width = `${width}px`;
+      afterImage.style.height = "100%";
     }
 
-    comparison.addEventListener("pointerdown", (event) => {
-      dragging = true;
+    function updateComparison(value) {
+      const position = Math.max(0, Math.min(100, Number(value)));
 
-      if (comparison.setPointerCapture) {
-        comparison.setPointerCapture(event.pointerId);
-      }
+      afterWrap.style.width = `${position}%`;
+      comparisonLine.style.left = `${position}%`;
 
-      updateComparison(event.clientX);
-    });
-
-    comparison.addEventListener("pointermove", (event) => {
-      if (!dragging) return;
-      updateComparison(event.clientX);
-    });
-
-    comparison.addEventListener("pointerup", () => {
-      dragging = false;
-    });
-
-    comparison.addEventListener("pointercancel", () => {
-      dragging = false;
-    });
-
-    handle.setAttribute("tabindex", "0");
-    handle.setAttribute("role", "slider");
-    handle.setAttribute("aria-label", "Сравнение до и после");
-    handle.setAttribute("aria-valuemin", "0");
-    handle.setAttribute("aria-valuemax", "100");
-    handle.setAttribute("aria-valuenow", "50");
-
-    function updateKeyboardComparison(direction) {
-      const current = Number(
-        handle.getAttribute("aria-valuenow") || 50
-      );
-
-      const next = Math.max(
-        0,
-        Math.min(100, current + direction * 5)
-      );
-
-      const rect = comparison.getBoundingClientRect();
-      updateComparison(rect.left + rect.width * next / 100);
-
-      handle.setAttribute("aria-valuenow", String(next));
-    }
-
-    handle.addEventListener("keydown", (event) => {
-      if (event.key === "ArrowLeft") {
-        event.preventDefault();
-        updateKeyboardComparison(-1);
-      }
-
-      if (event.key === "ArrowRight") {
-        event.preventDefault();
-        updateKeyboardComparison(1);
-      }
-    });
-
-    comparison.addEventListener("pointermove", () => {
-      const rect = comparison.getBoundingClientRect();
-      const position =
-        ((parseFloat(divider.style.left) || 50) / 100);
-
-      handle.setAttribute(
+      comparisonRange.value = String(position);
+      comparisonRange.setAttribute(
         "aria-valuenow",
-        String(Math.round(position * 100))
+        String(Math.round(position))
       );
+    }
+
+    syncImageSize();
+    updateComparison(comparisonRange.value);
+
+    comparisonRange.addEventListener("input", (event) => {
+      updateComparison(event.target.value);
+    });
+
+    window.addEventListener("resize", syncImageSize);
+
+    if ("ResizeObserver" in window) {
+      const comparisonObserver = new ResizeObserver(syncImageSize);
+      comparisonObserver.observe(comparisonBox);
+    }
+
+    afterImage.addEventListener("load", syncImageSize);
+  }
+
+  // ==========================================
+  // MOBILE NAVIGATION
+  // ==========================================
+
+  const menuToggle = document.getElementById("menuToggle");
+  const navigation = document.getElementById("navigation");
+  const navLinks = document.querySelectorAll("#navigation a");
+
+  function closeMenu() {
+    if (!menuToggle || !navigation) return;
+
+    menuToggle.classList.remove("active");
+    navigation.classList.remove("open");
+    document.body.classList.remove("menu-open");
+
+    menuToggle.setAttribute("aria-expanded", "false");
+    menuToggle.setAttribute("aria-label", "Открыть меню");
+  }
+
+  if (menuToggle && navigation) {
+    menuToggle.addEventListener("click", () => {
+      const isOpen = navigation.classList.toggle("open");
+
+      menuToggle.classList.toggle("active", isOpen);
+      document.body.classList.toggle("menu-open", isOpen);
+
+      menuToggle.setAttribute("aria-expanded", String(isOpen));
+      menuToggle.setAttribute(
+        "aria-label",
+        isOpen ? "Закрыть меню" : "Открыть меню"
+      );
+    });
+
+    navLinks.forEach((link) => {
+      link.addEventListener("click", closeMenu);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeMenu();
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      if (window.innerWidth > 760) {
+        closeMenu();
+      }
     });
   }
 
   // ==========================================
-  // CONTACT FORM / WHATSAPP
+  // HEADER SCROLL EFFECT
   // ==========================================
 
-  const contactForm = document.querySelector(".contact-form");
+  const header = document.getElementById("header");
+
+  function updateHeader() {
+    if (!header) return;
+
+    if (window.scrollY > 50) {
+      header.classList.add("scrolled");
+    } else {
+      header.classList.remove("scrolled");
+    }
+  }
+
+  window.addEventListener("scroll", updateHeader, {
+    passive: true
+  });
+
+  updateHeader();
+
+  // ==========================================
+  // CONTACT FORM
+  // ==========================================
+
+  const contactForm = document.getElementById("contactForm");
+  const formStatus = document.getElementById("formStatus");
 
   if (contactForm) {
     contactForm.addEventListener("submit", (event) => {
       event.preventDefault();
 
-      const name = contactForm.querySelector(
-        '[name="name"]'
-      )?.value.trim();
+      const formData = new FormData(contactForm);
 
-      const phone = contactForm.querySelector(
-        '[name="phone"]'
-      )?.value.trim();
+      const name = String(formData.get("name") || "").trim();
+      const phone = String(formData.get("phone") || "").trim();
+      const direction = String(
+        formData.get("direction") || ""
+      ).trim();
 
-      const direction = contactForm.querySelector(
-        '[name="direction"]'
-      )?.value.trim();
-
-      const comment = contactForm.querySelector(
-        '[name="comment"]'
-      )?.value.trim();
+      const comment = String(
+        formData.get("comment") || ""
+      ).trim();
 
       if (!name || !phone) {
-        alert("Пожалуйста, заполните имя и номер телефона.");
+        if (formStatus) {
+          formStatus.textContent =
+            "Пожалуйста, заполните имя и телефон.";
+        }
+        return;
+      }
+
+      if (!CONFIG.whatsappNumber) {
+        if (formStatus) {
+          formStatus.textContent =
+            "Демонстрационная форма. Контакт компании пока не подключён.";
+        }
         return;
       }
 
@@ -221,44 +278,49 @@ document.addEventListener("DOMContentLoaded", () => {
         `Имя: ${name}`,
         `Телефон: ${phone}`,
         `Направление: ${direction || "Не указано"}`,
-        `Комментарий: ${comment || "Нет"}`
+        `Комментарий: ${comment || "Не указан"}`
       ].join("\n");
 
-      if (!WHATSAPP_NUMBER) {
-        alert(
-          "Форма готова. Для отправки заявок необходимо добавить подтверждённый номер WhatsApp компании."
-        );
-        return;
-      }
-
       const whatsappURL =
-        `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+        "https://wa.me/" +
+        CONFIG.whatsappNumber +
+        "?text=" +
+        encodeURIComponent(message);
 
-      window.open(whatsappURL, "_blank", "noopener,noreferrer");
+      const openedWindow = window.open(
+        whatsappURL,
+        "_blank",
+        "noopener,noreferrer"
+      );
+
+      if (openedWindow) {
+        if (formStatus) {
+          formStatus.textContent =
+            "Откройте WhatsApp и отправьте подготовленное сообщение.";
+        }
+      } else {
+        if (formStatus) {
+          formStatus.textContent =
+            "Не удалось открыть WhatsApp. Проверьте настройки браузера.";
+        }
+      }
     });
   }
 
   // ==========================================
-  // MOBILE MENU SUPPORT
-  // ==========================================
-
-  const navLinks = document.querySelectorAll(".nav a");
-
-  navLinks.forEach((link) => {
-    link.addEventListener("click", () => {
-      document.body.classList.remove("menu-open");
-    });
-  });
-
-  // ==========================================
-  // IMAGE FALLBACK
+  // IMAGE ERROR HANDLING
   // ==========================================
 
   document.querySelectorAll("img").forEach((image) => {
     image.addEventListener("error", () => {
       image.classList.add("image-error");
+      image.setAttribute("data-image-error", "true");
     });
   });
 
-  console.log("ART ALMATY website initialized.");
+  // ==========================================
+  // FOOTER YEAR
+  // ==========================================
+
+  console.log("ART ALMATY initialized successfully.");
 });
