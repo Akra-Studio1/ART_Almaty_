@@ -1,248 +1,270 @@
 
-document.addEventListener("DOMContentLoaded", function () {
+/* =====================================================
+   ART ALMATY — COMPLETE INTERACTION SYSTEM
+===================================================== */
 
-    // 1. INTRO
-    var intro = document.querySelector(".intro");
-    var skipButton = document.querySelector(".intro-skip");
+document.addEventListener("DOMContentLoaded", () => {
 
-    function closeIntro() {
-        if (intro) {
-            intro.classList.add("hidden");
-        }
+  /* ================================================
+     1. INTRO
+  ================================================ */
+
+  const intro = document.getElementById("intro");
+  const introSkip = document.getElementById("introSkip");
+
+  function closeIntro() {
+    if (!intro) return;
+
+    intro.classList.add("hidden");
+
+    try {
+      sessionStorage.setItem("artAlmatyIntroSeen", "true");
+    } catch (error) {
+      // Сайт продолжает работать, даже если хранилище недоступно.
+    }
+  }
+
+  let introWasSeen = false;
+
+  try {
+    introWasSeen = sessionStorage.getItem("artAlmatyIntroSeen") === "true";
+  } catch (error) {
+    introWasSeen = false;
+  }
+
+  if (intro && introWasSeen) {
+    intro.classList.add("hidden");
+  }
+
+  if (introSkip) {
+    introSkip.addEventListener("click", closeIntro);
+  }
+
+  if (intro && !introWasSeen) {
+    window.setTimeout(closeIntro, 5500);
+  }
+
+
+  /* ================================================
+     2. HEADER SCROLL
+  ================================================ */
+
+  const header = document.getElementById("siteHeader");
+
+  function updateHeader() {
+    if (!header) return;
+
+    header.classList.toggle("scrolled", window.scrollY > 40);
+  }
+
+  window.addEventListener("scroll", updateHeader, {
+    passive: true
+  });
+
+  updateHeader();
+
+
+  /* ================================================
+     3. MOBILE MENU
+  ================================================ */
+
+  const menuToggle = document.getElementById("menuToggle");
+  const mainNav = document.getElementById("mainNav");
+
+  function closeMenu() {
+    if (!menuToggle || !mainNav) return;
+
+    menuToggle.classList.remove("active");
+    mainNav.classList.remove("open");
+    menuToggle.setAttribute("aria-expanded", "false");
+    document.body.classList.remove("menu-open");
+  }
+
+  if (menuToggle && mainNav) {
+
+    menuToggle.addEventListener("click", () => {
+      const isOpen = mainNav.classList.toggle("open");
+
+      menuToggle.classList.toggle("active", isOpen);
+      menuToggle.setAttribute("aria-expanded", String(isOpen));
+      document.body.classList.toggle("menu-open", isOpen);
+    });
+
+    mainNav.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", closeMenu);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeMenu();
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      if (window.innerWidth > 760) {
+        closeMenu();
+      }
+    });
+  }
+
+
+  /* ================================================
+     4. REVEAL ANIMATIONS
+  ================================================ */
+
+  const revealElements = document.querySelectorAll(".reveal");
+
+  if ("IntersectionObserver" in window) {
+
+    const revealObserver = new IntersectionObserver(
+      (entries, observer) => {
+
+        entries.forEach((entry) => {
+
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+            observer.unobserve(entry.target);
+          }
+
+        });
+
+      },
+      {
+        threshold: 0.12,
+        rootMargin: "0px 0px -35px 0px"
+      }
+    );
+
+    revealElements.forEach((element) => {
+      revealObserver.observe(element);
+    });
+
+  } else {
+
+    revealElements.forEach((element) => {
+      element.classList.add("visible");
+    });
+
+  }
+
+
+  /* ================================================
+     5. BEFORE / AFTER SLIDERS
+  ================================================ */
+
+  const comparisonBoxes = document.querySelectorAll("[data-comparison]");
+
+  comparisonBoxes.forEach((box) => {
+
+    const range = box.querySelector("[data-comparison-range]");
+    const afterWrap = box.querySelector("[data-after-wrap]");
+    const line = box.querySelector("[data-comparison-line]");
+
+    if (!range || !afterWrap || !line) {
+      return;
     }
 
-    if (intro) {
-        var introWasSeen = false;
+    range.min = "0";
+    range.max = "100";
+    range.step = "0.1";
+    range.value = "50";
 
-        try {
-            introWasSeen = sessionStorage.getItem("artIntroSeen") === "yes";
-        } catch (error) {
-            introWasSeen = false;
-        }
+    function updateComparison(value) {
 
-        if (introWasSeen) {
-            closeIntro();
-        } else {
-            window.setTimeout(function () {
-                closeIntro();
+      const position = Math.max(
+        0,
+        Math.min(100, Number(value))
+      );
 
-                try {
-                    sessionStorage.setItem("artIntroSeen", "yes");
-                } catch (error) {
-                    // Storage is optional.
-                }
-            }, 5600);
-        }
-    }
+      afterWrap.style.clipPath =
+        `inset(0 0 0 ${position}%)`;
 
-    if (skipButton) {
-        skipButton.addEventListener("click", function () {
-            closeIntro();
-
-            try {
-                sessionStorage.setItem("artIntroSeen", "yes");
-            } catch (error) {
-                // Storage is optional.
-            }
-        });
-    }
-
-
-    // 2. HEADER
-    var header = document.querySelector(".header");
-
-    function updateHeader() {
-        if (!header) {
-            return;
-        }
-
-        if (window.scrollY > 40) {
-            header.classList.add("scrolled");
-        } else {
-            header.classList.remove("scrolled");
-        }
-    }
-
-    updateHeader();
-
-    window.addEventListener("scroll", updateHeader);
-
-
-    // 3. MOBILE MENU
-    var menuButton = document.querySelector(".menu-toggle");
-    var navigation = document.querySelector(".nav");
-
-    if (menuButton && navigation) {
-
-        menuButton.addEventListener("click", function () {
-            navigation.classList.toggle("open");
-            menuButton.classList.toggle("active");
-
-            var isOpen = navigation.classList.contains("open");
-            menuButton.setAttribute("aria-expanded", isOpen);
-        });
-
-        var menuLinks = navigation.querySelectorAll("a");
-
-        menuLinks.forEach(function (link) {
-            link.addEventListener("click", function () {
-                navigation.classList.remove("open");
-                menuButton.classList.remove("active");
-                menuButton.setAttribute("aria-expanded", "false");
-            });
-        });
-    }
-
-
-    // 4. SCROLL ANIMATIONS
-    var revealElements = document.querySelectorAll(".reveal");
-
-    if ("IntersectionObserver" in window) {
-
-        var revealObserver = new IntersectionObserver(function (entries) {
-
-            entries.forEach(function (entry) {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add("visible");
-                    revealObserver.unobserve(entry.target);
-                }
-            });
-
-        }, {
-            threshold: 0.12
-        });
-
-        revealElements.forEach(function (element) {
-            revealObserver.observe(element);
-        });
-
-    } else {
-
-        revealElements.forEach(function (element) {
-            element.classList.add("visible");
-        });
+      line.style.left = `${position}%`;
 
     }
 
+    range.addEventListener("input", (event) => {
+      updateComparison(event.target.value);
+    });
 
-    // 5. BEFORE / AFTER SLIDERS
-    var comparisonBoxes = document.querySelectorAll("[data-comparison]");
+    updateComparison(50);
 
-    comparisonBoxes.forEach(function (box) {
+  });
 
-        var range = box.querySelector("[data-comparison-range]");
-        var afterWrap = box.querySelector("[data-after-wrap]");
-        var line = box.querySelector("[data-comparison-line]");
-        var afterImage = afterWrap ? afterWrap.querySelector("img") : null;
 
-        if (!range || !afterWrap || !line || !afterImage) {
-            console.warn("Проверь HTML блока До / После:", box);
-            return;
-        }
+  /* ================================================
+     6. CONTACT FORM — WHATSAPP
+  ================================================ */
 
-        function updateSlider() {
-            var value = Number(range.value);
+  const contactForm = document.getElementById("contactForm");
 
-            if (value < 0) {
-                value = 0;
-            }
+  /*
+    ВАЖНО:
+    Вставь сюда подтверждённый номер WhatsApp компании.
+    Формат: код страны + номер, только цифры.
+    Не добавляй +, пробелы или скобки.
 
-            if (value > 100) {
-                value = 100;
-            }
+    Пока номер пустой, форма не отправляет сообщение.
+  */
 
-            afterWrap.style.width = value + "%";
-            line.style.left = value + "%";
-        }
+  const WHATSAPP_NUMBER = "77072727941";
 
-        function resizeImage() {
-            afterImage.style.width = box.clientWidth + "px";
-        }
+  if (contactForm) {
 
-        range.min = 0;
-        range.max = 100;
-        range.value = 50;
+    contactForm.addEventListener("submit", (event) => {
 
-        updateSlider();
-        resizeImage();
+      event.preventDefault();
 
-        range.addEventListener("input", updateSlider);
+      if (!contactForm.reportValidity()) {
+        return;
+      }
 
-        window.addEventListener("resize", resizeImage);
+      if (!WHATSAPP_NUMBER) {
+        alert("Контакт WhatsApp ещё не настроен. Пожалуйста, свяжитесь с владельцем сайта.");
+        return;
+      }
 
-        afterImage.addEventListener("load", resizeImage);
+      const name = document.getElementById("clientName")?.value.trim() || "";
+      const phone = document.getElementById("clientPhone")?.value.trim() || "";
+      const direction = document.getElementById("clientDirection")?.value || "";
+      const comment = document.getElementById("clientComment")?.value.trim() || "Не указан";
+
+      const message = [
+        "Здравствуйте! Хочу оставить заявку на мебель.",
+        "",
+        `Имя: ${name}`,
+        `Телефон: ${phone}`,
+        `Направление: ${direction}`,
+        `Комментарий: ${comment}`
+      ].join("\n");
+
+      const whatsappURL =
+        `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+
+      window.open(whatsappURL, "_blank", "noopener,noreferrer");
 
     });
 
-
-    // 6. CONTACT FORM
-    var contactForm = document.querySelector(".contact-form");
-
-    if (contactForm) {
-
-        contactForm.addEventListener("submit", function (event) {
-            event.preventDefault();
-
-            if (!contactForm.reportValidity()) {
-                return;
-            }
-
-            var nameField = contactForm.querySelector('[name="name"]');
-            var phoneField = contactForm.querySelector('[name="phone"]');
-            var directionField = contactForm.querySelector('[name="direction"]');
-            var commentField = contactForm.querySelector('[name="comment"]');
-            var status = contactForm.querySelector(".form-status");
-
-            if (!nameField || !phoneField || !directionField) {
-                if (status) {
-                    status.textContent = "Проверь поля формы в HTML.";
-                }
-                return;
-            }
-
-            var message = "Здравствуйте! Заявка с сайта ART ALMATY.\n\n";
-            message += "Имя: " + nameField.value + "\n";
-            message += "Телефон: " + phoneField.value + "\n";
-            message += "Направление: " + directionField.value + "\n";
-
-            if (commentField) {
-                message += "Комментарий: " + commentField.value;
-            }
-
-            /*
-                Добавим подтверждённый номер WhatsApp компании позже.
-                Пока номер намеренно не указан.
-            */
-
-            var whatsappNumber = "";
-
-            if (whatsappNumber === "") {
-                if (status) {
-                    status.textContent = "Форма работает. Для отправки заявки нужно добавить номер WhatsApp компании.";
-                }
-
-                console.log(message);
-                return;
-            }
-
-            var whatsappLink = "https://wa.me/" + whatsappNumber;
-            whatsappLink += "?text=" + encodeURIComponent(message);
-
-            window.open(whatsappLink, "_blank");
-        });
-
-    }
+  }
 
 
-    // 7. IMAGE CHECK
-    var images = document.querySelectorAll("img");
+  /* ================================================
+     7. IMAGE ERROR DETECTION
+  ================================================ */
 
-    images.forEach(function (image) {
+  document.querySelectorAll("img").forEach((image) => {
 
-        image.addEventListener("error", function () {
-            console.warn("Не загрузилось изображение: " + image.src);
-        });
-
+    image.addEventListener("error", () => {
+      console.warn("Не удалось загрузить изображение:", image.src);
     });
+
+  });
+
+
+  /* ================================================
+     8. FOOTER YEAR / INITIALIZATION
+  ================================================ */
+
+  console.log("ART ALMATY website initialized.");
 
 });
